@@ -1,6 +1,9 @@
 # Formula Student cones detection and depth estimation on monovision
-<!-- ![](campus_output_video.mp4) -->
-![image](assets_test_set/pred_w9yESodihT.png)
+
+<p align="center">
+  <img src= ./image4readme.png/>
+</p>
+
 ## TODO:
 - [ ] Testing model on ONNX format
 - [ ] Writing inference mode on TensorRT
