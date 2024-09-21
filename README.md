@@ -9,7 +9,7 @@
 </p>
 
 ## TODO:
-- [ ] Testing model on ONNX format
+- [X] Testing model on ONNX format
 - [ ] Writing inference mode on TensorRT
 - [ ] Create full README.md
 - [ ] Add tracking algorithm (m.b. [StrongSort](https://github.com/dyhBUPT/StrongSORT?tab=readme-ov-file))

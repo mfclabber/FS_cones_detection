@@ -196,11 +196,11 @@ def prediction(image: torch.Tensor,
     res = get_cone_distances(bboxes, 1 / disp_resized_np)
 
     return disp_resized_np, show_image_with_objects(image, 
-                                   bboxes, 
-                                   labels, 
-                                   scores, 
-                                   depths_value=res, 
-                                   threshold_score=threshold_score)
+                                                    bboxes, 
+                                                    labels, 
+                                                    scores, 
+                                                    depths_value=res, 
+                                                    threshold_score=threshold_score)
 
 
 def process_frame(frame, 
@@ -210,10 +210,10 @@ def process_frame(frame,
                   loaded_dict_enc):
     
     disp_resized_np, annotated_frame = prediction(np.array(frame).transpose(2, 0, 1)[:3],
-                                 model,
-                                 encoder,
-                                 depth_decoder,
-                                 loaded_dict_enc)
+                                                  model,
+                                                  encoder,
+                                                  depth_decoder,
+                                                  loaded_dict_enc)
 
     return disp_resized_np, np.array(annotated_frame)
 

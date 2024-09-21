@@ -18,6 +18,9 @@ from typing import Tuple, Dict, List
 from ultralytics import YOLO
 from roboflow import Roboflow
 
+import onnx
+import onnxruntime as ort
+
 import torch
 import torchvision
 from torchvision import transforms, datasets
@@ -52,68 +55,145 @@ FUSED_SHAPE = (1280, 640)
 if __name__ == "__main__":
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = YOLOv9().to(device)
-    encoder, depth_decoder, loaded_dict_enc = get_mono_640x192_model()
 
-    # image = np.array(Image.open(test_image_path_list[i])).transpose(2, 0, 1)[:3]
+    inference_mode = "on"
 
-    # disp_resized_np, pred_image = prediction(image, 
-    #                                          model,
-    #                                          encoder,
-    #                                          depth_decoder,
-    #                                          loaded_dict_enc)
-    
-    
-    video_path = 'videos/track.mp4'
-    cap = cv2.VideoCapture(video_path)
+    if inference_mode != "onnx":
 
-    if (cap.isOpened()== False): 
-        print("Error opening video stream or file")
+        model = YOLOv9(path2weights="weights/best.pt").to(device)
+        encoder, depth_decoder, loaded_dict_enc = get_mono_640x192_model()
 
-    frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        # image = np.array(Image.open(test_image_path_list[i])).transpose(2, 0, 1)[:3]
 
-    print(f"Размер видео: {frame_width}x{frame_height}, FPS: {fps}, Количество кадров: {total_frames}")
-
-    output_video_path = 'output_track.mp4'
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
-
-    start_time = time.time()
-    num_frames = 0
-    frame_count = 0
-
-    while(cap.isOpened()):
-        ret, frame = cap.read()
-
-        frame_count += 1
-        num_frames += 1
-        current_fps = calculate_fps(start_time, num_frames)
+        # disp_resized_np, pred_image = prediction(image, 
+        #                                          model,
+        #                                          encoder,
+        #                                          depth_decoder,
+        #                                          loaded_dict_enc)
         
-        if frame_count % 5 == 0 or frame_count == 1:
-            if ret == True:
-                disp_resized_np, annotated_frame = process_frame(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR), 
-                                                                model,
-                                                                encoder,
-                                                                depth_decoder,
-                                                                loaded_dict_enc)
-                cv2.putText(annotated_frame, f"FPS: {current_fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-                cv2.imshow('Frame', cv2.cvtColor(annotated_frame, cv2.COLOR_RGB2BGR))
+        
+        video_path = 'videos/track.mp4'
+        cap = cv2.VideoCapture(video_path)
+
+        if (cap.isOpened()== False): 
+            print("Error opening video stream or file")
+
+        frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+        print(f"Размер видео: {frame_width}x{frame_height}, FPS: {fps}, Количество кадров: {total_frames}")
+
+        output_video_path = 'output_track.mp4'
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
+
+        start_time = time.time()
+        num_frames = 0
+        frame_count = 0
+
+        while(cap.isOpened()):
+            ret, frame = cap.read()
+
+            frame_count += 1
+            num_frames += 1
+            current_fps = calculate_fps(start_time, num_frames)
             
-                if cv2.waitKey(25) & 0xFF == ord('q'):
+            if frame_count % 5 == 0 or frame_count == 1:
+                if ret == True:
+                    disp_resized_np, annotated_frame = process_frame(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR), 
+                                                                    model,
+                                                                    encoder,
+                                                                    depth_decoder,
+                                                                    loaded_dict_enc)
+                    cv2.putText(annotated_frame, f"FPS: {current_fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                    cv2.imshow('Frame', cv2.cvtColor(annotated_frame, cv2.COLOR_RGB2BGR))
+                
+                    if cv2.waitKey(25) & 0xFF == ord('q'):
+                        break
+                else: 
                     break
-            else: 
-                break
-        else:
-            cv2.imshow('Frame', cv2.cvtColor(annotated_frame, cv2.COLOR_RGB2BGR))    
-        
-        out.write(cv2.cvtColor(annotated_frame, cv2.COLOR_RGB2BGR))
-        
-        # time.sleep(1 / fps / 5)    
+            else:
+                cv2.imshow('Frame', cv2.cvtColor(annotated_frame, cv2.COLOR_RGB2BGR))    
+            
+            out.write(cv2.cvtColor(annotated_frame, cv2.COLOR_RGB2BGR))
+            
+            # time.sleep(1 / fps / 5)    
 
-    cap.release()
-    out.release()
+        cap.release()
+        out.release()
 
-    cv2.destroyAllWindows()
+        cv2.destroyAllWindows()
+
+    else:
+
+    # TODO # onnx_model 
+
+        model = YOLOv9(path2weights="weights/best.onnx")
+        encoder, depth_decoder, loaded_dict_enc = get_mono_640x192_model()
+
+        # image = np.array(Image.open(test_image_path_list[i])).transpose(2, 0, 1)[:3]
+
+        # disp_resized_np, pred_image = prediction(image, 
+        #                                          model,
+        #                                          encoder,
+        #                                          depth_decoder,
+        #                                          loaded_dict_enc)
+        
+        
+        video_path = 'videos/track.mp4'
+        cap = cv2.VideoCapture(video_path)
+
+        if (cap.isOpened()== False): 
+            print("Error opening video stream or file")
+
+        frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+        print(f"Размер видео: {frame_width}x{frame_height}, FPS: {fps}, Количество кадров: {total_frames}")
+
+        output_video_path = 'output_track.mp4'
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
+
+        start_time = time.time()
+        num_frames = 0
+        frame_count = 0
+
+        while(cap.isOpened()):
+            ret, frame = cap.read()
+
+            frame_count += 1
+            num_frames += 1
+            current_fps = calculate_fps(start_time, num_frames)
+            
+            if frame_count % 5 == 0 or frame_count == 1:
+                if ret == True:
+                    disp_resized_np, annotated_frame = process_frame(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR), 
+                                                                    model,
+                                                                    encoder,
+                                                                    depth_decoder,
+                                                                    loaded_dict_enc)
+                    cv2.putText(annotated_frame, f"FPS: {current_fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                    cv2.imshow('Frame', cv2.cvtColor(annotated_frame, cv2.COLOR_RGB2BGR))
+                
+                    if cv2.waitKey(25) & 0xFF == ord('q'):
+                        break
+                else: 
+                    break
+            else:
+                cv2.imshow('Frame', cv2.cvtColor(annotated_frame, cv2.COLOR_RGB2BGR))    
+            
+            out.write(cv2.cvtColor(annotated_frame, cv2.COLOR_RGB2BGR))
+            
+            # time.sleep(1 / fps / 5)    
+
+        cap.release()
+        out.release()
+
+        cv2.destroyAllWindows()
+
+
